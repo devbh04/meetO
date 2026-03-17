@@ -1,0 +1,198 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from .models import ChatMessage, MeetingReport, TranscriptData
+
+
+def _format_seconds(total_seconds: float | None) -> str:
+    if total_seconds is None:
+        return "Unknown"
+    total_seconds = max(0, int(total_seconds))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def _language_label(code: str | None) -> str:
+    if not code:
+        return "Unknown"
+    mapping = {
+        "hi": "Hindi",
+        "mr": "Marathi",
+        "en": "English",
+        "gu": "Gujarati",
+    }
+    return f"{code} ({mapping.get(code.lower(), 'Unmapped language')})"
+
+
+def write_json(path: Path, payload: dict | list) -> None:
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def render_transcript_markdown(transcript: TranscriptData, chat_messages: list[ChatMessage], metadata: dict) -> str:
+    lines = [
+        "# Meeting Transcript",
+        "",
+        f"- Meeting URL: {metadata.get('meet_url', 'Unknown')}",
+        f"- Bot Name: {metadata.get('bot_name', 'Unknown')}",
+        f"- Language: {_language_label(transcript.language)}",
+        f"- Duration: {_format_seconds(transcript.duration_seconds)}",
+        f"- Transcription Backend: {metadata.get('transcription_backend', 'Unknown')}",
+        "",
+        "## Audio Transcript",
+        "",
+    ]
+
+    if transcript.segments:
+        for segment in transcript.segments:
+            speaker = segment.speaker or "Unknown Speaker"
+            lines.append(
+                f"- [{_format_seconds(segment.start)} - {_format_seconds(segment.end)}] {speaker}: {segment.text}"
+            )
+    else:
+        lines.append(transcript.text or "No transcript text available.")
+
+    lines.extend(["", "## Chat Messages", ""])
+    if chat_messages:
+        for message in chat_messages:
+            author = message.author or "Unknown Author"
+            lines.append(f"- [{_format_seconds(message.relative_seconds)}] {author}: {message.text}")
+    else:
+        lines.append("- No chat messages captured.")
+
+    return "\n".join(lines) + "\n"
+
+
+def render_report_markdown(report: MeetingReport, metadata: dict) -> str:
+    title_text = report.title if report.title else "Meeting Report"
+    lines = [
+        f"# {title_text}",
+        "",
+        "## Metadata",
+        "",
+        f"- Meeting URL: {metadata.get('meet_url', 'Unknown')}",
+        f"- Bot Name: {metadata.get('bot_name', 'Unknown')}",
+        f"- Recording Path: {metadata.get('recording_path', 'Unknown')}",
+        f"- Chat Messages Captured: {metadata.get('chat_count', 0)}",
+        f"- Transcript Language: {_language_label(report.transcript_language)}",
+        f"- Transcription Backend: {metadata.get('transcription_backend', 'Unknown')}",
+        f"- Analysis Backend: {metadata.get('analysis_backend', 'Unknown')}",
+        "",
+    ]
+
+    # ── Overview ──
+    lines.extend(["## Overview", ""])
+    if report.overview:
+        lines.append(report.overview)
+    else:
+        lines.append("- No overview available.")
+    lines.append("")
+
+    # ── Important Highlights ──
+    lines.extend(["## Important Highlights", ""])
+    if report.important_highlights:
+        lines.extend(f"- {item}" for item in report.important_highlights)
+    else:
+        lines.append("- No highlights extracted.")
+    lines.append("")
+
+    # ── Main Tasks ──
+    lines.extend(["## Main Tasks", ""])
+    if report.main_tasks:
+        lines.extend(f"- {item}" for item in report.main_tasks)
+    else:
+        lines.append("- No main tasks extracted.")
+    lines.append("")
+
+    # ── Decisions ──
+    lines.extend(["## Decisions", ""])
+    if report.decisions:
+        for decision in report.decisions:
+            line = f"- {decision.decision}"
+            if decision.timestamp:
+                line += f" ({decision.timestamp})"
+            lines.append(line)
+            if decision.evidence:
+                lines.append(f"  Evidence: {decision.evidence}")
+    else:
+        lines.append("- No decisions were extracted.")
+    lines.append("")
+
+    # ── Action Items ──
+    lines.extend(["## Action Items", ""])
+    if report.action_items:
+        for item in report.action_items:
+            details = []
+            if item.owner:
+                details.append(f"Owner: {item.owner}")
+            if item.deadline:
+                details.append(f"Deadline: {item.deadline}")
+            if item.timestamp:
+                details.append(f"Time: {item.timestamp}")
+            detail_text = f" ({'; '.join(details)})" if details else ""
+            lines.append(f"- {item.task}{detail_text}")
+            if item.evidence:
+                lines.append(f"  Evidence: {item.evidence}")
+    else:
+        lines.append("- No action items were extracted.")
+    lines.append("")
+
+    # ── Key Timestamps ──
+    lines.extend(["## Key Timestamps", ""])
+    if report.key_timestamps:
+        lines.extend(f"- {item}" for item in report.key_timestamps)
+    else:
+        lines.append("- No key timestamps extracted.")
+    lines.append("")
+
+    # ── Notes (detailed) ──
+    if report.summary_note:
+        lines.extend(["## Notes", "", report.summary_note, ""])
+
+    # ── Meeting Outcomes ──
+    lines.extend(["## Meeting Outcomes", ""])
+    if report.meeting_outcomes:
+        lines.extend(f"- {item}" for item in report.meeting_outcomes)
+    else:
+        lines.append("- No specific outcomes recorded.")
+    lines.append("")
+
+    # ── Conclusion ──
+    lines.extend(["## Conclusion", ""])
+    if report.conclusion:
+        lines.append(report.conclusion)
+    else:
+        lines.append("- No conclusion available.")
+    lines.append("")
+
+    # ── Speaker Highlights ──
+    lines.extend(["## Speaker Highlights", ""])
+    if report.speaker_highlights:
+        for speaker in report.speaker_highlights:
+            lines.append(f"### {speaker.speaker}")
+            lines.append("")
+            lines.extend(f"- {item}" for item in speaker.highlights)
+            lines.append("")
+    else:
+        lines.append("- Speaker-specific highlights were not available.")
+        lines.append("")
+
+    # ── Chronological Summary ──
+    lines.extend(["## Chronological Summary", ""])
+    if report.chronological_summary:
+        lines.extend(f"- {item}" for item in report.chronological_summary)
+    else:
+        lines.append("- No chronological summary available.")
+    lines.append("")
+
+    # ── Custom Insights (only if provided) ──
+    if report.custom_insights:
+        lines.extend(["## Custom Insights", ""])
+        lines.extend(f"- {item}" for item in report.custom_insights)
+        lines.append("")
+
+    return "\n".join(lines) + "\n"
