@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
+import { Bell, Link } from "lucide-react"
 
 export default function DashboardLayout({
   children,
@@ -10,13 +11,27 @@ export default function DashboardLayout({
     <div className="min-h-screen flex flex-col bg-brand-surface text-slate-900">
       <SidebarProvider className="flex flex-col items-stretch">
         {/* Full-width sticky top header over the sidebar */}
-        <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-2 border-b bg-white px-4 w-full">
-          <SidebarTrigger className="-ml-1" />
-          <div className="font-display font-bold text-xl tracking-tight text-slate-900 ml-2">
-            MeetO
+        <header className="sticky top-0 z-50 flex justify-between h-14 shrink-0 items-center gap-2 border-b bg-white px-4 w-full">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <div className="font-display font-bold text-xl tracking-tight text-slate-900 ml-2">
+              MeetO
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <img src="/slack-new.jpg" alt="" className="h-8 w-8"/>
+            <div className="flex gap-2 items-center bg-purple-600 text-white px-2 py-1 rounded-lg">
+              <Link className="h-4 w-4"/> |
+              <p className="text-sm">Share</p>
+            </div>
+            <div className="flex items-center justify-center">
+              <Bell className="h-5 w-5"/>
+            </div>
+            <div className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center">
+              <p className="text-sm">JD</p>
+            </div>
           </div>
         </header>
-        
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden relative">
           <AppSidebar className="top-14! h-[calc(100svh-3.5rem)]! border-r" />

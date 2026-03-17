@@ -59,9 +59,9 @@ export async function AppSidebar({ className, ...props }: React.ComponentProps<t
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="[&_svg]:size-5!">
                     <a href={item.url}>
-                      <item.icon />
+                      <item.icon/>
                       <span>{item.title}</span>
                     </a>
                   </SidebarMenuButton>
@@ -88,7 +88,7 @@ export async function AppSidebar({ className, ...props }: React.ComponentProps<t
                     <SidebarMenuItem key={meeting.meeting_id}>
                       <SidebarMenuButton asChild>
                         <a href={`/dashboard/meeting/${meeting.meeting_id}`} title={`${title} (${displayId})`}>
-                          <FileText />
+                          <FileText className="h-5 w-5"/>
                           <div className="flex flex-col items-start truncate max-w-[150px]">
                             <span className="truncate w-full font-medium">{title}</span>
                             <span className="text-[10px] text-slate-500 truncate w-full">ID: {meeting.meeting_id}</span>

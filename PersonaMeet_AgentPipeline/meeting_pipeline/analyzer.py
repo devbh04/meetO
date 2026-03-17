@@ -190,7 +190,10 @@ class MeetingAnalyzer:
                     "role": "system",
                     "content": (
                         "You consolidate meeting analysis into one comprehensive final report. "
-                        "Be thorough and detailed. Return strict JSON only."
+                        "Be thorough and detailed. Return strict JSON only. "
+                        "Use relevant emojis naturally throughout your text responses — in headings, summaries, "
+                        "highlight points, and conclusions — to make the output more engaging and scannable. "
+                        "Keep emoji use purposeful and not excessive."
                     ),
                 },
                 {
@@ -295,6 +298,9 @@ class MeetingAnalyzer:
             f"Meeting metadata: {json.dumps(metadata, ensure_ascii=False)}\n\n"
             "Analyze this meeting transcript thoroughly. It may be in Hindi, Marathi, English, or a mix. "
             "Write ALL output in English. Be comprehensive and extract every important detail. "
+            "Use relevant emojis naturally throughout your text fields — in the overview, highlights, summary notes, "
+            "conclusions, and chronological entries — to make the report more engaging and easy to skim. "
+            "Keep emoji use purposeful and not over the top. "
             "Return ONLY a valid JSON object with these exact keys:\n"
             "  overview (string — a concise 2-3 sentence executive summary of the entire meeting),\n"
             "  important_highlights (array of strings — the most critical points and takeaways),\n"

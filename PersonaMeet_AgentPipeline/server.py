@@ -95,6 +95,41 @@ async def get_meeting(meeting_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class ToggleActionItemRequest(BaseModel):
+    completed: bool
+
+@app.patch("/api/meetings/{meeting_id}/action-items/{item_index}")
+async def toggle_action_item(meeting_id: str, item_index: int, req: ToggleActionItemRequest):
+    """
+    Toggle the 'completed' field on a specific action item (by index) in MongoDB.
+    Fetches the document, updates the in-memory array, and writes it back
+    so it works even when action_items don't yet have a 'completed' field.
+    """
+    try:
+        db = Database.get_meetings_collection()
+        meeting = await db.find_one({"meeting_id": meeting_id}, {"analysis_json.action_items": 1})
+        if not meeting:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+
+        action_items = (meeting.get("analysis_json") or {}).get("action_items") or []
+        if item_index < 0 or item_index >= len(action_items):
+            raise HTTPException(status_code=400, detail="Invalid action item index")
+
+        action_items[item_index]["completed"] = req.completed
+
+        await db.update_one(
+            {"meeting_id": meeting_id},
+            {"$set": {"analysis_json.action_items": action_items}}
+        )
+        return {"status": "ok", "item_index": item_index, "completed": req.completed}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
+

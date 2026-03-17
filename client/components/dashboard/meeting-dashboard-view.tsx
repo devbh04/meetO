@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { 
   Calendar, Sparkles, FileText, Search, 
   MoreVertical, ListChecks, Kanban, Plus, MessageSquare, CheckCircle, Clock 
@@ -16,6 +16,30 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
   const analysis = meeting.analysis_json || {};
   const metadata = meeting.metadata || {};
   const chatMessages = meeting.chat_messages || [];
+
+  // Initialize checkbox state from DB (analysis_json.action_items[].completed)
+  const [checkedItems, setCheckedItems] = useState<boolean[]>(() =>
+    (analysis.action_items || []).map((item: any) => !!item.completed)
+  );
+
+  const handleToggle = useCallback(async (idx: number, checked: boolean) => {
+    // Optimistic UI update
+    setCheckedItems(prev => {
+      const next = [...prev];
+      next[idx] = checked;
+      return next;
+    });
+    // Persist to MongoDB via backend
+    try {
+      await fetch(`http://localhost:8000/api/meetings/${meeting.meeting_id}/action-items/${idx}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: checked }),
+      });
+    } catch (err) {
+      console.error("Failed to save checkbox state:", err);
+    }
+  }, [meeting.meeting_id]);
 
   const dateStr = meeting.created_at 
     ? new Date(meeting.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -52,7 +76,7 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 bg-slate-100 rounded-xl p-1.5 flex gap-1 overflow-x-auto custom-scrollbar border border-slate-200">
+      <div className="mb-6 bg-slate-100 rounded-md p-1.5 flex gap-1 overflow-x-auto custom-scrollbar border border-slate-200">
         {[
           { id: "overview", label: "Overview", icon: Sparkles },
           { id: "transcript", label: "Transcript", icon: FileText },
@@ -168,7 +192,7 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
               </div>
               <div className="custom-scrollbar flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30">
                 {analysis.decisions && analysis.decisions.length > 0 ? analysis.decisions.map((dec: any, idx: number) => (
-                  <div key={idx} className="relative rounded-xl border border-emerald-100 bg-white p-5 shadow-sm overflow-hidden group">
+                  <div key={idx} className="relative rounded-md border border-emerald-100 bg-white p-5 shadow-sm overflow-hidden group">
                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-400 group-hover:bg-emerald-500 transition-colors"></div>
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="text-base font-bold text-slate-900 leading-snug pr-4">{dec.decision}</h4>
@@ -194,7 +218,7 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
         </div>
 
         {/* Right Column (Sidebars) */}
-        <div className="space-y-6 lg:col-span-4 max-h-[800px] overflow-y-auto custom-scrollbar lg:pl-4">
+        <div className="space-y-6 lg:col-span-4 custom-scrollbar lg:pl-4">
           
           {/* Action Items */}
           <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -210,18 +234,30 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
               </Badge>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
               {analysis.action_items && analysis.action_items.length > 0 ? (
                 analysis.action_items.map((item: any, idx: number) => (
-                  <div key={idx} className="group relative rounded-xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-brand-purple/30 transition-all p-4 shadow-sm flex items-start gap-3">
-                    <Checkbox id={`task-${idx}`} className="mt-0.5 border-slate-300 data-[state=checked]:bg-emerald-500" />
-                    <div className="grid gap-1.5 flex-1">
-                      <label htmlFor={`task-${idx}`} className="text-sm font-semibold text-slate-800 leading-snug cursor-pointer group-hover:text-brand-indigo transition-colors">
+                  <div key={idx} className="group relative rounded-md border border-slate-100 bg-white hover:bg-slate-50 hover:border-brand-purple/30 transition-all p-4 shadow-sm flex items-start gap-3 overflow-hidden">
+                    <Checkbox
+                      id={`task-${idx}`}
+                      checked={!!checkedItems[idx]}
+                      onCheckedChange={(val) => handleToggle(idx, !!val)}
+                      className="mt-0.5 border-slate-300 data-[state=checked]:bg-emerald-500 flex-none"
+                    />
+                    <div className="grid gap-1.5 flex-1 min-w-0">
+                      <label
+                        htmlFor={`task-${idx}`}
+                        className={`text-sm font-semibold leading-snug cursor-pointer transition-colors break-words ${
+                          checkedItems[idx]
+                            ? "line-through text-slate-400"
+                            : "text-slate-800 group-hover:text-brand-indigo"
+                        }`}
+                      >
                         {item.task}
                       </label>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                           {item.owner && (
-                              <Badge variant="outline" className="text-[10px] uppercase font-bold text-brand-indigo bg-indigo-50 border-indigo-100">
+                              <Badge variant="outline" className="text-[10px] uppercase font-bold text-brand-indigo bg-indigo-50 border-indigo-100 max-w-full truncate">
                                   {item.owner}
                               </Badge>
                           )}
@@ -235,7 +271,7 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <div className="py-8 text-center bg-slate-50 rounded-md border border-dashed border-slate-200">
                   <p className="text-sm text-slate-500 font-medium">No action items assigned.</p>
                 </div>
               )}
@@ -255,8 +291,7 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
             <div className="space-y-3">
               {analysis.main_tasks && analysis.main_tasks.length > 0 ? (
                 analysis.main_tasks.map((task: string, idx: number) => (
-                   <div key={idx} className="rounded-xl bg-slate-50 border border-slate-100 p-4 shadow-sm relative overflow-hidden group hover:border-blue-200 transition-colors">
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-400 group-hover:bg-blue-500 transition-colors rounded-l-xl"></div>
+                   <div key={idx} className="rounded-md bg-slate-50 border border-slate-100 p-4 shadow-sm relative overflow-hidden group hover:border-blue-200 transition-colors">
                       <div className="mb-1.5">
                         <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Focus Area</span>
                       </div>
@@ -264,7 +299,7 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
                    </div>
                 ))
               ) : (
-                <div className="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <div className="py-8 text-center bg-slate-50 rounded-md border border-dashed border-slate-200">
                   <p className="text-sm text-slate-500 font-medium">No strategic focus tasks extracted.</p>
                 </div>
               )}

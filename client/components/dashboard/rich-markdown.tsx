@@ -59,8 +59,7 @@ const components: Components = {
 
   // H2 sections get a bold indigo divider
   h2: ({ children }) => (
-    <h2 className="flex items-center gap-3 mt-10 mb-4 text-xl font-black text-brand-indigo border-b-2 border-indigo-100 pb-3">
-      <span className="w-2 h-6 rounded-full bg-gradient-to-b from-brand-indigo to-brand-purple flex-none" />
+    <h2 className="flex items-center gap-3 mt-10 mb-4 text-xl font-black text-black">
       {children}
     </h2>
   ),
