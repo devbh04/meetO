@@ -115,7 +115,9 @@ export default function MeetingDashboardView({ meeting }: { meeting: any }) {
                 </div>
                 
                 {meeting.report_md ? (
-                  <RichMarkdown stripTitle>{meeting.report_md}</RichMarkdown>
+                  <div className="h-[800px] overflow-y-auto">
+                    <RichMarkdown stripTitle>{meeting.report_md}</RichMarkdown>
+                  </div>
                 ) : (
                   <div className="flex h-40 items-center justify-center text-slate-400">
                     No full markdown report available for this meeting.
